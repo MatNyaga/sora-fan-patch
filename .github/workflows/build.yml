@@ -11,6 +11,9 @@
 #
 # Release data (release.json + patch.vcdiff, our own content, never game files) is NOT in git.
 # Give it to a manual run (Actions -> build -> Run workflow) as a zip URL + the zip's SHA-256.
+# Or upload that zip to a DRAFT GitHub Release (asset name sora-release-*.zip) and give the run its
+# tag + SHA-256: the run then also attaches the finished apps to that draft. The draft stays hidden
+# until Mat publishes it by hand.
 # Note: in a public repository the run inputs and the artifacts can be seen/downloaded by anyone
 # logged in to GitHub, so only start a real-data run when that release may be public.
 name: build
@@ -22,8 +25,12 @@ on:
         description: "URL of a zip with release.json + patch.vcdiff (+ README.txt) at its top level. Empty = synthetic test release."
         required: false
         default: ""
+      release_tag:
+        description: "Or: tag of a DRAFT release holding sora-release-*.zip. The finished apps get attached to that draft."
+        required: false
+        default: ""
       release_zip_sha256:
-        description: "SHA-256 of that zip (required when a URL is given)"
+        description: "SHA-256 of that zip (required when a URL or tag is given)"
         required: false
         default: ""
   push:
@@ -68,6 +75,8 @@ jobs:
   release-data:
     needs: test
     runs-on: ubuntu-22.04
+    permissions:
+      contents: write   # draft releases are only visible to a token that can write
     outputs:
       kind: ${{ steps.pick.outputs.kind }}
     steps:
@@ -77,13 +86,24 @@ jobs:
         id: pick
         env:
           URL: ${{ github.event.inputs.release_zip_url }}
+          TAG: ${{ github.event.inputs.release_tag }}
           SUM: ${{ github.event.inputs.release_zip_sha256 }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           mkdir -p embed
-          if [ -n "${URL:-}" ]; then
-            [ -n "${SUM:-}" ] || { echo "::error::release_zip_sha256 is required with release_zip_url"; exit 1; }
-            curl -fsSL --retry 3 "$URL" -o release.zip
+          if [ -n "${URL:-}" ] && [ -n "${TAG:-}" ]; then
+            echo "::error::give release_zip_url or release_tag, not both"; exit 1
+          fi
+          if [ -n "${URL:-}" ] || [ -n "${TAG:-}" ]; then
+            [ -n "${SUM:-}" ] || { echo "::error::release_zip_sha256 is required with a URL or tag"; exit 1; }
+            if [ -n "${TAG:-}" ]; then
+              [ "$(gh release view "$TAG" -R "$GITHUB_REPOSITORY" --json isDraft -q .isDraft)" = true ] \
+                || { echo "::error::$TAG is not a draft release"; exit 1; }
+              gh release download "$TAG" -R "$GITHUB_REPOSITORY" -p 'sora-release-*.zip' -O release.zip
+            else
+              curl -fsSL --retry 3 "$URL" -o release.zip
+            fi
             echo "${SUM,,}  release.zip" | sha256sum -c -
             python3 -I - release.zip embed <<'PY'
           import json, sys, zipfile
@@ -202,3 +222,30 @@ jobs:
           path: ${{ runner.temp }}/out/*
           if-no-files-found: error
           retention-days: 14
+
+  attach:
+    # Only for a run given release_tag: puts the apps, one SHA256SUMS.txt, LICENSE.txt and SOURCE.txt
+    # on that draft release. It does not publish it.
+    if: github.event.inputs.release_tag != ''
+    needs: [release-data, build]
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with: { pattern: "sora-fan-patch-*-${{ needs.release-data.outputs.kind }}", path: dl }
+      - name: Attach to the draft release
+        env:
+          TAG: ${{ github.event.inputs.release_tag }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          [ "$(gh release view "$TAG" -R "$GITHUB_REPOSITORY" --json isDraft -q .isDraft)" = true ] \
+            || { echo "::error::$TAG is not a draft release"; exit 1; }
+          mkdir up
+          find dl -type f \( -name '*.exe' -o -name '*.dmg' -o -name '*.AppImage' \) -exec cp {} up/ \;
+          first=$(ls -d dl/*/ | head -1)
+          cp "$first/LICENSE.txt" "$first/SOURCE.txt" up/
+          (cd up && sha256sum -- *.exe *.dmg *.AppImage) | tee up/SHA256SUMS.txt
+          ls -la up
+          gh release upload "$TAG" -R "$GITHUB_REPOSITORY" --clobber up/*

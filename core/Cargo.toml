@@ -1,6 +1,6 @@
 [package]
 name = "sorapatch-core"
-version = "0.1.0"
+version = "1.0.0"
 edition = "2021"
 description = "Checks a disc image, decrypts its EBOOT.BIN and applies a VCDIFF (xdelta3 -S none) patch, streaming, pure Rust."
 license = "GPL-3.0-or-later"  # since P1.10 EBOOT decrypt (core/src/pspcrypt.rs, port of GPL code); see README.md "Licence and credits"
