@@ -1,0 +1,310 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Sora for Dissidia 012</title>
+<meta name="description" content="A fan-made patch that adds Sora as a new fighter to your own US copy of Dissidia 012 for PSP. Works in PPSSPP and on PS Vita.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;700;800&display=swap">
+<style>
+:root {
+  --night: #0B1026; --deep: #142250; --dusk: #1F3C7D; --sky: #3D7BE0; --sky-light: #9CCBFF;
+  --gold: #F5C04A; --gold-deep: #E0A526; --peach: #FFB58A;
+  --text: #F4F7FF; --muted: #B8C4E2; --faint: #8392BA;
+  --panel: rgba(255,255,255,.06); --panel-strong: rgba(255,255,255,.11); --line: rgba(255,255,255,.16);
+  --ok: #5BD6A0; --warn: #FF8F7F; --on-gold: #1B1633;
+  --radius: 18px;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0; color: var(--text); background: var(--night);
+  font: 16px/1.6 "Segoe UI Variable", "Segoe UI", system-ui, -apple-system, "SF Pro Text", Ubuntu, Cantarell, "Noto Sans", sans-serif;
+}
+.wrap { max-width: 1060px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+h1, h2, h3, .brand { font-family: "Outfit", "Segoe UI", system-ui, sans-serif; text-wrap: balance; }
+h2 { font-size: clamp(1.5rem, 3.2vw, 2rem); line-height: 1.2; margin: 0 0 .4rem; }
+h3 { font-size: 1.08rem; margin: 0 0 .3rem; }
+p { margin: 0 0 .8rem; }
+a { color: var(--sky-light); }
+a:hover { color: var(--gold); }
+.label { font-size: .74rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--gold); margin: 0 0 .5rem; }
+.muted { color: var(--muted); }
+code, .mono { font-family: ui-monospace, "SF Mono", "Cascadia Mono", "DejaVu Sans Mono", monospace; font-size: .86em; }
+code { background: var(--panel-strong); padding: .1em .38em; border-radius: 6px; overflow-wrap: anywhere; }
+
+/* ---------- top + hero: night to dawn sky (our own art, drawn in CSS) */
+.sky-band { position: relative; overflow: hidden;
+  background: linear-gradient(180deg, var(--night) 0%, var(--deep) 48%, var(--dusk) 78%, #4B5FA0 100%); }
+.sky-band::before { content: ""; position: absolute; inset: 0 0 30% 0; opacity: .85; pointer-events: none;
+  background-image:
+    radial-gradient(1.4px 1.4px at 12% 18%, #fff 50%, transparent 51%), radial-gradient(1px 1px at 28% 42%, #fff 50%, transparent 51%),
+    radial-gradient(1.8px 1.8px at 44% 12%, #FFE7A8 50%, transparent 51%), radial-gradient(1px 1px at 61% 30%, #fff 50%, transparent 51%),
+    radial-gradient(1.4px 1.4px at 77% 9%, #fff 50%, transparent 51%), radial-gradient(1px 1px at 88% 36%, #CFE4FF 50%, transparent 51%),
+    radial-gradient(1.2px 1.2px at 6% 60%, #fff 50%, transparent 51%), radial-gradient(1px 1px at 94% 64%, #fff 50%, transparent 51%),
+    radial-gradient(1.6px 1.6px at 35% 70%, #CFE4FF 50%, transparent 51%), radial-gradient(1px 1px at 70% 58%, #fff 50%, transparent 51%),
+    radial-gradient(1.2px 1.2px at 52% 48%, #fff 50%, transparent 51%), radial-gradient(1px 1px at 18% 80%, #fff 50%, transparent 51%);
+  animation: twinkle 6s ease-in-out infinite alternate; }
+.sky-band::after { content: ""; position: absolute; left: -10%; right: -10%; bottom: -140px; height: 300px; pointer-events: none;
+  background: radial-gradient(ellipse at 50% 100%, rgba(255,181,138,.45), rgba(245,192,74,.12) 45%, transparent 70%); }
+@keyframes twinkle { from { opacity: .55; } to { opacity: .9; } }
+@media (prefers-reduced-motion: reduce) { .sky-band::before { animation: none; } html { scroll-behavior: auto; } }
+
+header.top { position: relative; z-index: 1; padding-block: 18px 0; }
+header.top .wrap { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 1.05rem; color: var(--text); text-decoration: none; }
+.brand svg { width: 30px; height: 30px; flex: none; }
+nav.links { display: flex; gap: 18px; flex-wrap: wrap; font-size: .92rem; }
+nav.links a { color: var(--muted); text-decoration: none; }
+nav.links a:hover { color: var(--text); }
+
+.hero { position: relative; z-index: 1; padding-block: 56px 88px; }
+.hero .wrap { display: grid; grid-template-columns: 1.05fr 1fr; gap: 40px; align-items: center; }
+.hero h1 { font-size: clamp(2.3rem, 6vw, 3.7rem); line-height: 1.04; margin: 0 0 .9rem; font-weight: 800; letter-spacing: -.01em; }
+.hero h1 em { font-style: normal; color: var(--gold); }
+.hero .lead { font-size: 1.12rem; color: var(--muted); max-width: 34rem; margin-bottom: 1.4rem; }
+.hero > .wrap > div { min-width: 0; }
+.cta { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+.btn { display: inline-flex; align-items: center; gap: .5rem; font-weight: 700; font-size: 1rem; text-decoration: none;
+  padding: .8rem 1.3rem; border-radius: 999px; border: 1px solid transparent; transition: transform .15s ease, background .15s ease; }
+.btn:hover { transform: translateY(-1px); }
+.btn-gold { background: var(--gold); color: var(--on-gold); box-shadow: 0 8px 28px rgba(245,192,74,.25); }
+.btn-gold:hover { background: #FFD066; color: var(--on-gold); }
+.btn-ghost { background: var(--panel); color: var(--text); border-color: var(--line); }
+.btn-ghost:hover { background: var(--panel-strong); color: var(--text); }
+.fine { font-size: .84rem; color: var(--faint); margin-top: .9rem; }
+
+.screen { position: relative; border-radius: 14px; overflow: hidden; background: #05081A; border: 1px solid var(--line);
+  aspect-ratio: 480 / 272; max-width: 100%; box-shadow: 0 30px 70px rgba(0,0,0,.45); }
+.screen img, .screen video { width: 100%; height: 100%; object-fit: cover; display: block; image-rendering: pixelated; }
+.screen .ph { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; color: var(--faint); font-size: .9rem; padding: 12px;
+  background: repeating-linear-gradient(135deg, rgba(255,255,255,.03) 0 12px, transparent 12px 24px); }
+.screen .tag { position: absolute; left: 10px; bottom: 10px; font-size: .72rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+  background: rgba(11,16,38,.78); color: var(--muted); padding: .25rem .55rem; border-radius: 999px; }
+
+/* ---------- sections */
+section.block { padding-block: 72px; border-top: 1px solid var(--line); }
+section.block:nth-of-type(even) { background: #0E1530; }
+.intro { max-width: 40rem; margin-bottom: 2rem; }
+
+.video-frame { max-width: 860px; }
+.video-frame .screen { aspect-ratio: 16 / 9; }
+.video-frame .screen video { object-fit: contain; background: #000; }
+
+.gallery { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.gallery figure { margin: 0; min-width: 0; }
+.gallery figcaption { font-size: .88rem; color: var(--muted); margin-top: .5rem; }
+
+.features { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; min-width: 0; }
+.card p { color: var(--muted); margin: 0; font-size: .95rem; }
+.card .ic { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; margin-bottom: .7rem;
+  background: rgba(245,192,74,.14); color: var(--gold); font-weight: 800; font-family: "Outfit", sans-serif; }
+
+.steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; counter-reset: s; }
+.step { position: relative; padding-top: 52px; }
+.step::before { counter-increment: s; content: counter(s); position: absolute; top: 18px; left: 20px; width: 26px; height: 26px; border-radius: 50%;
+  background: var(--gold); color: var(--on-gold); font: 800 .9rem/26px "Outfit", sans-serif; text-align: center; }
+.check { margin-top: 1.4rem; background: var(--panel); border: 1px dashed var(--line); border-radius: var(--radius); padding: 16px 20px; }
+.check dl { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: .35rem 1rem; margin: 0; font-size: .92rem; }
+.check dt { color: var(--muted); }
+.check dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+
+.platforms { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.status { display: inline-block; font-size: .74rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; padding: .2rem .6rem; border-radius: 999px; margin-bottom: .6rem; }
+.status.ok { background: rgba(91,214,160,.15); color: var(--ok); }
+.status.no { background: rgba(255,143,127,.14); color: var(--warn); }
+
+.faq { max-width: 46rem; }
+.faq details { border-bottom: 1px solid var(--line); padding: 14px 0; }
+.faq summary { cursor: pointer; font-weight: 600; list-style: none; display: flex; justify-content: space-between; gap: 12px; }
+.faq summary::-webkit-details-marker { display: none; }
+.faq summary::after { content: "+"; color: var(--gold); font-weight: 800; }
+.faq details[open] summary::after { content: "–"; }
+.faq details p { color: var(--muted); margin: .6rem 0 0; }
+
+footer { padding-block: 48px 64px; border-top: 1px solid var(--line); background: var(--night); font-size: .9rem; color: var(--muted); }
+footer .cols { display: grid; grid-template-columns: 1.3fr 1fr; gap: 32px; }
+footer .cols > div { min-width: 0; }
+footer .notice { font-size: .86rem; color: var(--faint); border-left: 3px solid var(--gold-deep); padding-left: 12px; margin-top: 1rem; }
+footer ul { margin: .3rem 0 0; padding-left: 1.1rem; }
+
+@media (max-width: 860px) {
+  .hero .wrap { grid-template-columns: 1fr; }
+  .gallery, .features, .steps, .platforms { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  footer .cols { grid-template-columns: 1fr; }
+}
+@media (max-width: 560px) {
+  .gallery, .features, .steps, .platforms { grid-template-columns: 1fr; }
+  .hero { padding-block: 36px 64px; }
+  nav.links { display: none; }
+  .check dl { grid-template-columns: 1fr; }
+  .check dd { margin-bottom: .4rem; }
+}
+</style>
+<style>img{max-width:100%}[hidden]{display:none!important}</style>
+</head>
+<body>
+
+<div class="sky-band">
+  <header class="top">
+    <div class="wrap">
+      <a class="brand" href="#">
+        <svg viewBox="0 0 32 32" aria-hidden="true"><defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFE7A8"/><stop offset="1" stop-color="#E0A526"/></linearGradient></defs><path d="M16 2l3.6 9.1L29 12l-7.2 6.1L24.2 28 16 22.8 7.8 28l2.4-9.9L3 12l9.4-.9z" fill="url(#g)"/></svg>
+        Sora for Dissidia 012
+      </a>
+      <nav class="links" aria-label="Sections">
+        <a href="#trailer">Trailer</a><a href="#features">What's in it</a><a href="#install">Install</a><a href="#faq">FAQ</a>
+        <a href="https://github.com/MatNyaga/sora-fan-patch">Source</a>
+      </nav>
+    </div>
+  </header>
+
+  <div class="hero">
+    <div class="wrap">
+      <div>
+        <p class="label">Fan-made patch · PSP · version 1.0</p>
+        <h1>Sora joins <em>Dissidia 012</em>.</h1>
+        <p class="lead">A new fighter with his own Keyblade combos, EX Mode, Reflect barrier and Trinity Limit EX Burst, built from his Kingdom Hearts II moves. Patch your own US copy in one click.</p>
+        <div class="cta">
+          <a class="btn btn-gold" href="https://github.com/MatNyaga/sora-fan-patch/releases/latest">Download the patch app</a>
+          <a class="btn btn-ghost" href="#trailer">Watch the combos</a>
+        </div>
+        <p class="fine">Windows · macOS · Linux · free and open source (GPL-3.0). You bring your own game.</p>
+      </div>
+      <div class="screen" id="hero-shot">
+        <img src="media/shots/01-select-sora-cell.png" alt="Sora on the character select screen" onerror="this.remove()">
+        <div class="ph">Screenshot: Sora on the character select</div>
+        <span class="tag">In game · PPSSPP</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<section class="block" id="trailer">
+  <div class="wrap">
+    <div class="intro">
+      <p class="label">Trailer</p>
+      <h2>Long combos, the KH2 way</h2>
+      <p class="muted">Ground and air chains, a finisher, EX Mode with Reflect, and the EX Burst. Recorded in PPSSPP from the patched game.</p>
+    </div>
+    <div class="video-frame">
+      <div class="screen">
+        <video src="media/sora-combos.mp4" poster="media/shots/04-battle-intro.png" controls preload="metadata" playsinline onerror="this.remove()"></video>
+        <div class="ph">Video: Sora's combos (30–60 s)</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="block" id="shots">
+  <div class="wrap">
+    <div class="intro">
+      <p class="label">Screenshots</p>
+      <h2>Straight from the game</h2>
+      <p class="muted">Native 480 × 272, scaled up without smoothing.</p>
+    </div>
+    <div class="gallery" id="gallery">
+      <figure><div class="screen"><img src="media/shots/03-vs-screen.png" alt="VS screen, Sora against Lightning" loading="lazy" onerror="this.remove()"><div class="ph">VS screen</div></div><figcaption>Sora vs Lightning on Order's Sanctuary.</figcaption></figure>
+      <figure><div class="screen"><img src="media/shots/05-combo-launch-hit.png" alt="Sora launching an opponent mid-combo" loading="lazy" onerror="this.remove()"><div class="ph">Combo hit</div></div><figcaption>A Keyblade launch in the middle of a combo.</figcaption></figure>
+      <figure><div class="screen"><img src="media/shots/06-ex-mode-activation.png" alt="Sora entering EX Mode" loading="lazy" onerror="this.remove()"><div class="ph">EX Mode</div></div><figcaption>EX Mode: "My friends are my power!"</figcaption></figure>
+      <figure><div class="screen"><img src="media/shots/07-ex-reflect-barrier.png" alt="Reflect barrier around Sora" loading="lazy" onerror="this.remove()"><div class="ph">Reflect</div></div><figcaption>In EX Mode, guarding raises a Reflect barrier.</figcaption></figure>
+      <figure><div class="screen"><img src="media/shots/08-ex-burst-trinity-limit.png" alt="Trinity Limit EX Burst banner" loading="lazy" onerror="this.remove()"><div class="ph">EX Burst</div></div><figcaption>Trinity Limit, his EX Burst.</figcaption></figure>
+      <figure><div class="screen"><img src="media/shots/10-result-screen.png" alt="Result screen after a win" loading="lazy" onerror="this.remove()"><div class="ph">Result screen</div></div><figcaption>PP and a level up after the win.</figcaption></figure>
+    </div>
+  </div>
+</section>
+
+<section class="block" id="features">
+  <div class="wrap">
+    <div class="intro">
+      <p class="label">What's in it</p>
+      <h2>A whole fighter, not a costume</h2>
+      <p class="muted">Sora takes a new spot on the roster (#33), next to the original 31 fighters. Nobody is replaced.</p>
+    </div>
+    <div class="features">
+      <div class="card"><div class="ic">1</div><h3>His own moves</h3><p>Ground and air Keyblade chains, finishers and magic like Firaga and Thundaga, timed from his KH2 animations.</p></div>
+      <div class="card"><div class="ic">2</div><h3>EX Mode + Reflect</h3><p>His own EX look and a Reflect barrier that blocks attacks and fills your EX gauge back up.</p></div>
+      <div class="card"><div class="ic">3</div><h3>Trinity Limit</h3><p>A full EX Burst with its own banner and finisher.</p></div>
+      <div class="card"><div class="ic">4</div><h3>KH2 body and voice</h3><p>Sora's KH2 model at the right size, the Kingdom Key in his hand, his voice and Keyblade sounds.</p></div>
+      <div class="card"><div class="ic">5</div><h3>Everywhere in the game</h3><p>Quick Battle, assist, Labyrinth, Original Quest, Records and the Museum. Six new items in the PP Catalog.</p></div>
+      <div class="card"><div class="ic">6</div><h3>Keeps your save</h3><p>Your progress carries over. Sora's record uses the space of Friend Card 25.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="block" id="install">
+  <div class="wrap">
+    <div class="intro">
+      <p class="label">Install</p>
+      <h2>Three steps, no tools to learn</h2>
+      <p class="muted">The app only reads your file and makes a new one next to it. Your original stays untouched.</p>
+    </div>
+    <div class="steps">
+      <div class="card step"><h3>Get the app</h3><p>Download it for your computer from the <a href="https://github.com/MatNyaga/sora-fan-patch/releases/latest">release page</a>.</p></div>
+      <div class="card step"><h3>Pick your game file</h3><p>Choose your own US Dissidia 012 ISO. The app checks that it is the right, complete, unmodified copy.</p></div>
+      <div class="card step"><h3>Play</h3><p>Open the new file in PPSSPP, or copy it to <code>ux0:pspemu/ISO/</code> on a PS Vita with Adrenaline. Back up your save first.</p></div>
+    </div>
+    <div class="check">
+      <p class="label">The file you need</p>
+      <dl>
+        <dt>Game</dt><dd>Dissidia 012 [duodecim] Final Fantasy, PSP, US version</dd>
+        <dt>Disc code</dt><dd class="mono">ULUS-10566</dd>
+        <dt>Size</dt><dd class="mono">1,754,529,792 bytes</dd>
+        <dt>SHA-256</dt><dd class="mono">df94177d3e194e82800a574b50b61ee3c7be6caa877c8e82242a41af75d1ab6e</dd>
+      </dl>
+    </div>
+  </div>
+</section>
+
+<section class="block" id="platforms">
+  <div class="wrap">
+    <div class="intro">
+      <p class="label">Where it runs</p>
+      <h2>Tested on real hardware</h2>
+    </div>
+    <div class="platforms">
+      <div class="card"><span class="status ok">Tested</span><h3>PPSSPP</h3><p>On PC. Every mode was played through in testing.</p></div>
+      <div class="card"><span class="status ok">Tested</span><h3>PS Vita (Adrenaline)</h3><p>Battles, EX Mode, assists, Data Install and old saves all work. Turn off Adrenaline's game plugins first.</p></div>
+      <div class="card"><span class="status no">Not tested yet</span><h3>PSP</h3><p>Needs custom firmware. Should work like the Vita, but nobody has tried it on a real PSP yet.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="block" id="faq">
+  <div class="wrap">
+    <div class="intro"><p class="label">FAQ</p><h2>Good to know</h2></div>
+    <div class="faq">
+      <details><summary>Where do I get the game?</summary><p>From your own copy. This page never links to game files, and the patch contains no Dissidia files. Make the ISO from your own UMD.</p></details>
+      <details><summary>Can I use xdelta, DeltaPatcher or another patch tool?</summary><p>No. The patch is made against the game's program file unlocked, which only this app does, from your copy, while it works. The app is small and does everything offline.</p></details>
+      <details><summary>Windows or macOS says the app is unsafe.</summary><p>The app isn't code-signed, so the system warns once. Windows: "More info" → "Run anyway". macOS: System Settings → Privacy &amp; Security → "Open Anyway" (older macOS: right-click the app → Open).</p></details>
+      <details><summary>The game won't start on my Vita.</summary><p>Turn off Adrenaline's game plugins: hold R while Adrenaline starts → Recovery → Plugins → set every "game" line to Disabled. Old plugin packs stop the game from starting, with or without the patch.</p></details>
+      <details><summary>What happens to my save?</summary><p>Back it up first. Sora's progress uses the space of Friend Card 25, so you keep 24 Friend Cards (lock the ones you want to keep). Going back to the original game with that save isn't supported, so restore your backup instead.</p></details>
+      <details><summary>My save says "corrupted" on the Vita.</summary><p>A save that was first created in PPSSPP may not load on real hardware, even with the original game. Saves made on a real PSP or Vita work fine.</p></details>
+      <details><summary>Can I play ad hoc with friends?</summary><p>Only if both players use this same Sora version. Friend Cards and ghosts from the unmodded game aren't supported.</p></details>
+      <details><summary>Is the source code public?</summary><p>Yes. The patch app is free software under the GNU GPL v3. <a href="https://github.com/MatNyaga/sora-fan-patch">Source on GitHub</a>.</p></details>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap cols">
+    <div>
+      <p><strong>Sora for Dissidia 012</strong>, made by Mat.<br>Built by Mat with help from AI tools (Claude, Codex).</p>
+      <p class="notice">No Dissidia files are included. Sora's model and sounds are fan-ported from Kingdom Hearts II. Fan-made, not affiliated with Square Enix or Disney.</p>
+    </div>
+    <div>
+      <p class="label">Credits</p>
+      <ul>
+        <li>EBOOT decryption ported from <a href="https://github.com/John-K/pspdecrypt">pspdecrypt</a> (John-K), <a href="https://github.com/hrydgard/ppsspp">PPSSPP</a> and libkirk (Draan et al.)</li>
+        <li>Tested in <a href="https://www.ppsspp.org/">PPSSPP</a> and on PS Vita with Adrenaline</li>
+        <li><a href="https://github.com/MatNyaga/sora-fan-patch">Source code</a> · GPL-3.0-or-later</li>
+      </ul>
+    </div>
+  </div>
+</footer>
+</body>
+</html>

@@ -246,6 +246,9 @@ jobs:
           find dl -type f \( -name '*.exe' -o -name '*.dmg' -o -name '*.AppImage' \) -exec cp {} up/ \;
           first=$(ls -d dl/*/ | head -1)
           cp "$first/LICENSE.txt" "$first/SOURCE.txt" up/
+          # GitHub turns spaces into dots and drops brackets in asset names; use those names here
+          # so SHA256SUMS.txt matches what people download.
+          (cd up && for f in *' '*; do n=$(printf '%s' "$f" | tr ' ' '.' | tr -d '()'); mv -- "$f" "$n"; done)
           (cd up && sha256sum -- *.exe *.dmg *.AppImage) | tee up/SHA256SUMS.txt
           ls -la up
           gh release upload "$TAG" -R "$GITHUB_REPOSITORY" --clobber up/*
