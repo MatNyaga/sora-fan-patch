@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Installer Look Review</title>
+<style>
+  :root { --bg: #0d1330; --card: #161f45; --text: #eef2ff; --muted: #a8b4d8; --gold: #F5C04A; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Ubuntu, sans-serif; }
+  .wrap { max-width: 1500px; margin: 0 auto; padding: 28px 16px 60px; }
+  h1 { margin: 0 0 6px; font-size: 28px; }
+  h2 { margin: 36px 0 10px; font-size: 20px; }
+  p { color: var(--muted); margin: 0 0 10px; max-width: 900px; }
+  a { color: #9CCBFF; }
+  .cta { display: inline-block; margin: 8px 0 4px; padding: 12px 20px; border-radius: 12px; background: var(--gold); color: #1B1633; font-weight: 700; text-decoration: none; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 420px), 1fr)); gap: 22px; }
+  figure { margin: 0; background: var(--card); border-radius: 14px; padding: 10px; }
+  figcaption { font-size: 14px; color: var(--muted); padding: 8px 4px 2px; }
+  figcaption b { color: var(--text); }
+  .frame { position: relative; width: 100%; aspect-ratio: 800 / 720; overflow: hidden; border-radius: 10px; }
+  .frame iframe { position: absolute; top: 0; left: 0; width: 800px; height: 720px; border: 0; transform-origin: 0 0; }
+  .sw { display: flex; flex-wrap: wrap; gap: 10px; }
+  .sw div { width: 132px; border-radius: 10px; overflow: hidden; background: var(--card); font-size: 13px; }
+  .sw i { display: block; height: 54px; }
+  .sw span { display: block; padding: 6px 8px; color: var(--muted); }
+  .sw b { color: var(--text); display: block; }
+  table { border-collapse: collapse; width: 100%; max-width: 900px; font-size: 15px; }
+  td, th { text-align: left; padding: 8px 10px; border-bottom: 1px solid #2a3566; vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; }
+  .tag { font-size: 12px; background: var(--gold); color: #1B1633; border-radius: 999px; padding: 1px 8px; font-weight: 700; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Player installer: look review</h1>
+  <p>Mock of the one-window app that adds Sora to the player's own US disc image. These screens are the real app's
+     HTML and CSS (<code>app/ui/</code>), with fake progress. Everything here is our own: sky gradient,
+     stars, clouds, the star emblem, system fonts. No game art, no logos, no official-looking lettering.</p>
+  <a class="cta" href="../app/ui/index.html" target="_blank">Open the clickable demo ↗</a>
+  <p style="margin-top:6px">In the demo, click the drop area or drop any file onto the window. A file name with “EU” in it shows the
+     wrong-region message. The small “mock:” buttons at the bottom right jump straight to any screen.</p>
+
+  <h2>Screens</h2>
+  <div class="grid" id="grid"></div>
+
+  <h2>Name options (pick one; plain text, no logo)</h2>
+  <table>
+    <tr><th>Option</th><th>Window title / file name</th><th>Notes</th></tr>
+    <tr><td><b>Sora for Dissidia 012</b> <span class="tag">used in mock</span></td><td>“Sora for Dissidia 012 — fan patch” / <code>Dissidia 012 + Sora (fan patch 1.0).iso</code></td><td>Says exactly what it is. The game's name is only used to say which game it works with.</td></tr>
+    <tr><td><b>Open Sky</b>: fan patch for Dissidia 012</td><td>“Open Sky — Sora fan patch”</td><td>Our own project name (“sora” means sky). Gives us a brand for future fighters too.</td></tr>
+    <tr><td><b>Duodecim Plus</b>: fan patch</td><td>“Duodecim Plus — adds Sora”</td><td>Short, but sits closer to the game's own title. Not recommended.</td></tr>
+  </table>
+  <p style="margin-top:10px">Avoided on purpose: “Keyblade”, “Kingdom”, crowns, hearts, crystals, any company name or logo, and words
+     like “official” or “update”. Footer on every screen: <i>“Unofficial fan-made project. Not affiliated with, endorsed or
+     sponsored by the makers or publishers of the game.”</i></p>
+
+  <h2>Colours</h2>
+  <div class="sw">
+    <div><i style="background:#0B1026"></i><span><b>Night</b>#0B1026 background top</span></div>
+    <div><i style="background:#142250"></i><span><b>Deep</b>#142250</span></div>
+    <div><i style="background:#1F3C7D"></i><span><b>Dusk</b>#1F3C7D</span></div>
+    <div><i style="background:#3D7BE0"></i><span><b>Sky</b>#3D7BE0 progress</span></div>
+    <div><i style="background:#9CCBFF"></i><span><b>Sky light</b>#9CCBFF links, icons</span></div>
+    <div><i style="background:#F5C04A"></i><span><b>Gold</b>#F5C04A main buttons</span></div>
+    <div><i style="background:#FFB58A"></i><span><b>Dawn</b>#FFB58A horizon glow</span></div>
+    <div><i style="background:#5BD6A0"></i><span><b>Good</b>#5BD6A0 success</span></div>
+    <div><i style="background:#FF8F7F"></i><span><b>Problem</b>#FF8F7F errors (never red panic)</span></div>
+    <div><i style="background:#F4F7FF"></i><span><b>Text</b>#F4F7FF on dark ≥ 12:1</span></div>
+  </div>
+</div>
+<script>
+  const shots = [
+    ["welcome", "1. Welcome", "Drop the file or click. One-line hint + “How do I get this file?” (from your own UMD)."],
+    ["dragging", "1b. Dragging a file over the window", "The whole drop area lights up gold: “Let go to use this file”."],
+    ["checking", "2. Checking your file", "Fingerprint check of the US disc (ULUS-10566). Three steps shown at the top."],
+    ["building", "3. Adding Sora", "Big progress bar and percentage. “Stop” is always there; stopping leaves nothing behind."],
+    ["done", "4. Done", "Where the new file is + Open folder. The original was not changed. Two lines on how to play."],
+    ["err:wrong_region", "Problem: other region", "European / Japanese copies are named, with the US code to look for."],
+    ["err:already_patched", "Friendly: already has Sora", "Not an error: green star, “You can play it right away”."],
+    ["err:incomplete", "Problem: incomplete copy", "File too small → the copy stopped early."],
+    ["err:modified", "Problem: changed / damaged copy", "Right game, wrong fingerprint (other mod or damage)."],
+    ["err:archive", "Problem: still zipped", "ZIP / 7Z / RAR detected → “Unpack it first”."],
+    ["err:no_space", "Problem: not enough space", "Says how much is needed and offers “Choose another folder…”."],
+    ["err:build_failed", "Problem: something went wrong", "Half-written file already deleted. A short code for helpers."],
+    ["err:cancelled", "Stopped", "Calm: “Nothing was changed.”"],
+    ["welcome&help=1", "Help (F1 or the Help button)", "Four sentences; that is the whole manual."],
+  ];
+  const grid = document.getElementById("grid");
+  for (const [s, title, note] of shots) {
+    const f = document.createElement("figure");
+    f.innerHTML = `<div class="frame"><iframe loading="lazy" title="${title}" src="../app/ui/index.html?embed=1&screen=${s}"></iframe></div>
+      <figcaption><b>${title}</b><br>${note}</figcaption>`;
+    grid.appendChild(f);
+  }
+  const fit = () => document.querySelectorAll(".frame").forEach((fr) => {
+    fr.querySelector("iframe").style.transform = `scale(${fr.clientWidth / 800})`;
+  });
+  addEventListener("resize", fit); fit();
+</script>
+</body>
+</html>

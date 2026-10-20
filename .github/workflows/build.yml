@@ -1,0 +1,204 @@
+# Builds the fan patch app for Windows, macOS (Apple Silicon + Intel) and Linux.
+# Repository root = the installer workspace (core/, cli/, app/, tests/).
+#
+#   test          Linux: cargo test (core + cli), the synthetic end-to-end suite, the strings check.
+#                 Uploads the synthetic test release it made (3 MiB fake disc, no game data).
+#   release-data  Picks the release to embed: the zip given to a manual run (checked against its
+#                 SHA-256 and for unexpected files), or the synthetic test release when none is given.
+#   build         Windows (NSIS setup .exe + portable .exe), macOS (.dmg, arm64 + x64), Linux (AppImage),
+#                 each with LICENSE.txt + SOURCE.txt. Uploaded as workflow artifacts only: nothing is
+#                 published to a GitHub Release by this workflow.
+#
+# Release data (release.json + patch.vcdiff, our own content, never game files) is NOT in git.
+# Give it to a manual run (Actions -> build -> Run workflow) as a zip URL + the zip's SHA-256.
+# Note: in a public repository the run inputs and the artifacts can be seen/downloaded by anyone
+# logged in to GitHub, so only start a real-data run when that release may be public.
+name: build
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_zip_url:
+        description: "URL of a zip with release.json + patch.vcdiff (+ README.txt) at its top level. Empty = synthetic test release."
+        required: false
+        default: ""
+      release_zip_sha256:
+        description: "SHA-256 of that zip (required when a URL is given)"
+        required: false
+        default: ""
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_TOOLCHAIN: "1.97.1"
+  TAURI_CLI_VERSION: "2.12.3"
+
+jobs:
+  test:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with: { toolchain: "${{ env.RUST_TOOLCHAIN }}" }
+      - uses: Swatinem/rust-cache@v2
+      - name: Tools for the synthetic suite
+        run: sudo apt-get update && sudo apt-get install -y xdelta3
+      - run: cargo test --release --locked
+      - run: tests/run_synthetic.sh
+      - run: target/release/sorapatch-cli --check-strings
+      - name: Synthetic test release
+        uses: actions/upload-artifact@v4
+        with:
+          name: synthetic-release
+          path: |
+            testdata/rel-default/release.json
+            testdata/rel-default/patch.vcdiff
+          if-no-files-found: error
+          retention-days: 3
+
+  release-data:
+    needs: test
+    runs-on: ubuntu-22.04
+    outputs:
+      kind: ${{ steps.pick.outputs.kind }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with: { name: synthetic-release, path: synthetic }
+      - name: Pick the release to embed
+        id: pick
+        env:
+          URL: ${{ github.event.inputs.release_zip_url }}
+          SUM: ${{ github.event.inputs.release_zip_sha256 }}
+        run: |
+          set -euo pipefail
+          mkdir -p embed
+          if [ -n "${URL:-}" ]; then
+            [ -n "${SUM:-}" ] || { echo "::error::release_zip_sha256 is required with release_zip_url"; exit 1; }
+            curl -fsSL --retry 3 "$URL" -o release.zip
+            echo "${SUM,,}  release.zip" | sha256sum -c -
+            python3 -I - release.zip embed <<'PY'
+          import json, sys, zipfile
+          z = zipfile.ZipFile(sys.argv[1])
+          names = [n for n in z.namelist() if not n.endswith("/")]
+          allowed = {"release.json", "patch.vcdiff", "README.txt"}
+          bad = [n for n in names if n not in allowed]
+          if bad or not {"release.json", "patch.vcdiff"} <= set(names):
+              sys.exit(f"release zip must hold only {sorted(allowed)} at its top level; got {names}")
+          z.extractall(sys.argv[2], ["release.json", "patch.vcdiff"])
+          m = json.load(open(f"{sys.argv[2]}/release.json"))
+          for k in ("format", "title", "version", "input", "output"):
+              if k not in m:
+                  sys.exit(f"release.json: missing {k}")
+          print(f"release: {m['title']} {m['version']} (format {m['format']}) -> {m['output']['file_name']}")
+          PY
+            echo "kind=release-$(python3 -I -c 'import json,sys; print(json.load(open(sys.argv[1]))["version"])' embed/release.json)" >> "$GITHUB_OUTPUT"
+          else
+            cp synthetic/release.json synthetic/patch.vcdiff embed/
+            echo "kind=synthetic-test" >> "$GITHUB_OUTPUT"
+          fi
+          sha256sum embed/*
+      - uses: actions/upload-artifact@v4
+        with:
+          name: embed-release
+          path: embed/*
+          if-no-files-found: error
+          retention-days: 1
+
+  build:
+    needs: release-data
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: windows-latest, target: x86_64-pc-windows-msvc,   bundles: "nsis",      tag: windows-x64 }
+          - { os: macos-latest,   target: aarch64-apple-darwin,     bundles: "app,dmg",   tag: macos-arm64 }
+          - { os: macos-latest,   target: x86_64-apple-darwin,      bundles: "app,dmg",   tag: macos-x64 }
+          - { os: ubuntu-22.04,   target: x86_64-unknown-linux-gnu, bundles: "appimage",  tag: linux-x64 }
+    runs-on: ${{ matrix.os }}
+    defaults: { run: { shell: bash } }
+    env:
+      APPIMAGE_EXTRACT_AND_RUN: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "${{ env.RUST_TOOLCHAIN }}"
+          targets: "${{ matrix.target }}"
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: "app/src-tauri -> target"
+          key: ${{ matrix.target }}
+
+      - name: Linux build libraries (WebKitGTK 4.1)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev libsoup-3.0-dev libjavascriptcoregtk-4.1-dev \
+            librsvg2-dev libxdo-dev libssl-dev patchelf file
+
+      - name: Release to embed
+        uses: actions/download-artifact@v4
+        with: { name: embed-release, path: "${{ runner.temp }}/release" }
+      - run: |
+          ls -la "$RUNNER_TEMP/release"
+          echo "SORAPATCH_RELEASE_DIR=$RUNNER_TEMP/release" >> "$GITHUB_ENV"
+
+      - name: Tauri CLI (cached)
+        id: tauri-cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/cargo-tauri
+            ~/.cargo/bin/cargo-tauri.exe
+          key: tauri-cli-${{ env.TAURI_CLI_VERSION }}-${{ runner.os }}-${{ runner.arch }}-${{ env.RUST_TOOLCHAIN }}
+      - if: steps.tauri-cache.outputs.cache-hit != 'true'
+        run: cargo install tauri-cli --version "${TAURI_CLI_VERSION}" --locked
+
+      - name: Build app + bundles
+        working-directory: app/src-tauri
+        run: cargo tauri build --ci --target ${{ matrix.target }} --bundles ${{ matrix.bundles }} -- --locked
+
+      - name: Collect artifacts (+ GPL text + source note)
+        env:
+          KIND: ${{ needs.release-data.outputs.kind }}
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP/out"; mkdir -p "$out"
+          t=app/src-tauri/target/${{ matrix.target }}/release
+          cp LICENSE "$out/LICENSE.txt"
+          {
+            echo "Sora for Dissidia 012 - fan patch app, made by Mat."
+            echo "Built by Mat with help from AI tools (Claude, Codex)."
+            echo "No Dissidia files are included. Sora's model and sounds are fan-ported from Kingdom Hearts II."
+            echo "Fan-made, not affiliated with Square Enix or Disney."
+            echo "Free software under the GNU General Public License v3 or later (LICENSE.txt)."
+            echo "Complete source of this exact build: ${{ github.server_url }}/${{ github.repository }}/tree/${{ github.sha }}"
+            echo "Embedded release: $KIND"
+            if [ "$KIND" = synthetic-test ]; then
+              echo "TEST BUILD: this app only patches a synthetic test file, not the game."
+            fi
+          } > "$out/SOURCE.txt"
+          case "${{ runner.os }}" in
+            Windows) cp "$t/sora-fan-patch.exe" "$out/Sora Fan Patch (portable).exe"; cp "$t"/bundle/nsis/*.exe "$out/" ;;
+            macOS)   cp "$t"/bundle/dmg/*.dmg "$out/" ;;
+            Linux)   cp "$t"/bundle/appimage/*.AppImage "$out/" ;;
+          esac
+          ls -la "$out"
+          if command -v sha256sum >/dev/null; then (cd "$out" && sha256sum -- *) ; else (cd "$out" && shasum -a 256 -- *); fi | tee "$RUNNER_TEMP/SHA256SUMS.txt"
+          mv "$RUNNER_TEMP/SHA256SUMS.txt" "$out/"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sora-fan-patch-${{ matrix.tag }}-${{ needs.release-data.outputs.kind }}
+          path: ${{ runner.temp }}/out/*
+          if-no-files-found: error
+          retention-days: 14

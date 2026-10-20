@@ -1,0 +1,27 @@
+[package]
+name = "sora-fan-patch"
+version = "0.1.0"
+edition = "2021"
+description = "Sora for Dissidia 012 - fan patch installer (applies our patch to the player's own disc image)"
+license = "GPL-3.0-or-later"
+
+# Standalone workspace: needs the Tauri Linux libs (webkit2gtk-4.1) to build; core/cli do not.
+[workspace]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-dialog = "2"
+tauri-plugin-opener = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sorapatch-core = { path = "../../core" }
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+strip = true
+panic = "abort"

@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sora for Dissidia 012 — fan patch</title>
+<link rel="stylesheet" href="style.css">
+<script src="strings.en.js"></script>
+</head>
+<body>
+<!-- Our own art only: sky gradient, CSS stars, hand-drawn cloud bank. No game art, logos or official fonts. -->
+<div class="sky" aria-hidden="true">
+  <div class="stars"></div>
+  <svg class="clouds" viewBox="0 0 1200 220" preserveAspectRatio="none">
+    <path d="M0 150 C80 110 150 120 210 140 C260 95 360 90 420 130 C480 100 560 105 610 135 C680 90 800 85 860 130 C920 105 1000 110 1050 140 C1110 115 1170 120 1200 135 L1200 220 L0 220 Z" fill="#fff" opacity=".07"/>
+    <path d="M0 185 C90 150 170 160 240 175 C300 140 400 140 470 170 C540 145 640 150 700 172 C770 140 880 140 950 172 C1020 150 1120 152 1200 170 L1200 220 L0 220 Z" fill="#fff" opacity=".09"/>
+  </svg>
+</div>
+
+<header class="top">
+  <div class="brand">
+    <svg class="emblem" viewBox="0 0 64 64" aria-hidden="true">
+      <defs>
+        <linearGradient id="g-ring" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFD978"/><stop offset="1" stop-color="#7FB6FF"/></linearGradient>
+        <linearGradient id="g-star" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#FFE3A0"/></linearGradient>
+      </defs>
+      <circle cx="32" cy="32" r="27" fill="none" stroke="url(#g-ring)" stroke-width="3.5"/>
+      <path d="M32 9 C33.6 23 41 30.4 55 32 C41 33.6 33.6 41 32 55 C30.4 41 23 33.6 9 32 C23 30.4 30.4 23 32 9 Z" fill="url(#g-star)"/>
+      <circle cx="50.5" cy="13.5" r="3.2" fill="#FFD978"/>
+    </svg>
+    <div class="brand-text">
+      <span class="brand-title" data-t="app_title"></span>
+      <span class="pill" data-t="app_tag"></span>
+    </div>
+  </div>
+  <nav class="tools">
+    <button class="tool" id="text-smaller" data-aria="text_smaller">A−</button>
+    <button class="tool" id="text-bigger" data-aria="text_bigger">A+</button>
+    <button class="tool" id="help-open" data-t="help_link"></button>
+  </nav>
+</header>
+
+<main id="main">
+  <!-- 1. Welcome / choose file -->
+  <section class="screen" data-screen="welcome">
+    <h1 tabindex="-1" data-t="welcome_title"></h1>
+    <p class="lead" data-t="welcome_body"></p>
+    <button class="drop" id="drop" aria-describedby="drop-hint">
+      <svg class="drop-icon" viewBox="0 0 64 64" aria-hidden="true">
+        <circle cx="32" cy="42" r="18" fill="none" stroke="currentColor" stroke-width="3"/>
+        <circle cx="32" cy="42" r="4.5" fill="none" stroke="currentColor" stroke-width="3"/>
+        <path d="M32 2 V18 M25 11 L32 18 L39 11" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span class="drop-title" data-t="drop_title"></span>
+      <span class="drop-release" data-t="drop_release"></span>
+      <span class="drop-or" data-t="drop_or"></span>
+      <span class="btn primary" data-t="choose_button"></span>
+    </button>
+    <p class="hint" id="drop-hint" data-t="drop_hint"></p>
+    <details class="how">
+      <summary data-t="how_get_link"></summary>
+      <p data-t="how_get_body"></p>
+    </details>
+  </section>
+
+  <!-- 2. Working: check → build → verify -->
+  <section class="screen" data-screen="working">
+    <ol class="steps" aria-label="Steps">
+      <li data-step="checking"><span class="dot"></span><span data-t="step_check"></span></li>
+      <li data-step="building"><span class="dot"></span><span data-t="step_build"></span></li>
+      <li data-step="verifying"><span class="dot"></span><span data-t="step_verify"></span></li>
+    </ol>
+    <h1 tabindex="-1" id="work-title"></h1>
+    <p class="lead" id="work-body"></p>
+    <p class="file-chip" id="work-file"></p>
+    <div class="bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="bar">
+      <div class="bar-fill" id="bar-fill"></div>
+    </div>
+    <p class="pct" id="pct" aria-hidden="true">0%</p>
+    <button class="btn ghost" id="cancel" data-t="cancel_button"></button>
+  </section>
+
+  <!-- 3a. Problem (or the friendly "already has Sora") -->
+  <section class="screen" data-screen="problem">
+    <div class="badge" id="problem-badge" aria-hidden="true"></div>
+    <h1 tabindex="-1" id="problem-title"></h1>
+    <p class="lead" id="problem-body"></p>
+    <div class="actions">
+      <button class="btn primary" id="problem-folder" data-t="choose_folder"></button>
+      <button class="btn primary" id="problem-again" data-t="try_again"></button>
+    </div>
+    <details class="details" id="problem-details">
+      <summary data-t="details_label"></summary>
+      <code id="problem-code"></code>
+    </details>
+  </section>
+
+  <!-- 3b. Done -->
+  <section class="screen" data-screen="done">
+    <div class="badge ok" aria-hidden="true">
+      <svg viewBox="0 0 48 48"><path d="M13 25 L21 33 L36 16" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </div>
+    <h1 tabindex="-1" data-t="done_title"></h1>
+    <div class="result">
+      <span class="label" data-t="done_file_label"></span>
+      <span class="file" id="done-file"></span>
+      <span class="label" data-t="done_folder_label"></span>
+      <span class="folder" id="done-folder"></span>
+    </div>
+    <div class="actions">
+      <button class="btn primary" id="open-folder" data-t="open_folder"></button>
+      <button class="btn ghost" id="done-close" data-t="close_button"></button>
+    </div>
+    <p class="safe" data-t="done_original_safe"></p>
+    <h2 data-t="next_title"></h2>
+    <ul class="next">
+      <li>
+        <svg viewBox="0 0 32 32" aria-hidden="true"><rect x="3" y="6" width="26" height="16" rx="2.5" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M11 27 H21 M16 22 V27" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+        <span data-t="next_ppsspp"></span>
+      </li>
+      <li>
+        <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M9 3 H20 L25 8 V29 H9 Z" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/><path d="M13 8 V12 M16.5 8 V12 M20 9 V12" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+        <span data-t="next_psp"></span>
+      </li>
+    </ul>
+  </section>
+</main>
+
+<footer class="bottom">
+  <span data-t="disclaimer"></span>
+  <span class="ver" id="ver"></span>
+</footer>
+
+<dialog id="help">
+  <h2 data-t="help_title"></h2>
+  <ul>
+    <li data-t="help_1"></li>
+    <li data-t="help_2"></li>
+    <li data-t="help_3"></li>
+    <li data-t="help_4"></li>
+  </ul>
+  <form method="dialog"><button class="btn primary" data-t="help_close"></button></form>
+</dialog>
+
+<div class="live" aria-live="polite" id="live"></div>
+<script src="app.js"></script>
+</body>
+</html>

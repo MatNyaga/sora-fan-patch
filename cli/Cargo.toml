@@ -1,0 +1,10 @@
+[package]
+name = "sorapatch-cli"
+version = "0.1.0"
+edition = "2021"
+description = "Test/CI harness for sorapatch-core (same checks and texts as the app)."
+license = "GPL-3.0-or-later"
+
+[dependencies]
+sorapatch-core = { path = "../core" }
+serde_json = "1"

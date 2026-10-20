@@ -1,0 +1,11 @@
+# Fan-patch installer workspace. The Tauri app (app/src-tauri) is its own workspace so the
+# core + CLI build and test anywhere without the WebKit/GTK toolchain.
+[workspace]
+members = ["core", "cli"]
+resolver = "2"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+strip = true
