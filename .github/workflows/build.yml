@@ -53,7 +53,7 @@ jobs:
   test:
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@master
         with: { toolchain: "${{ env.RUST_TOOLCHAIN }}" }
       - uses: Swatinem/rust-cache@v2
@@ -63,7 +63,7 @@ jobs:
       - run: tests/run_synthetic.sh
       - run: target/release/sorapatch-cli --check-strings
       - name: Synthetic test release
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: synthetic-release
           path: |
@@ -80,7 +80,7 @@ jobs:
     outputs:
       kind: ${{ steps.pick.outputs.kind }}
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with: { name: synthetic-release, path: synthetic }
       - name: Pick the release to embed
         id: pick
@@ -126,7 +126,7 @@ jobs:
             echo "kind=synthetic-test" >> "$GITHUB_OUTPUT"
           fi
           sha256sum embed/*
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: embed-release
           path: embed/*
@@ -148,7 +148,7 @@ jobs:
     env:
       APPIMAGE_EXTRACT_AND_RUN: "1"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: "${{ env.RUST_TOOLCHAIN }}"
@@ -166,7 +166,7 @@ jobs:
             librsvg2-dev libxdo-dev libssl-dev patchelf file
 
       - name: Release to embed
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with: { name: embed-release, path: "${{ runner.temp }}/release" }
       - run: |
           ls -la "$RUNNER_TEMP/release"
@@ -174,7 +174,7 @@ jobs:
 
       - name: Tauri CLI (cached)
         id: tauri-cache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             ~/.cargo/bin/cargo-tauri
@@ -216,7 +216,7 @@ jobs:
           if command -v sha256sum >/dev/null; then (cd "$out" && sha256sum -- *) ; else (cd "$out" && shasum -a 256 -- *); fi | tee "$RUNNER_TEMP/SHA256SUMS.txt"
           mv "$RUNNER_TEMP/SHA256SUMS.txt" "$out/"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: sora-fan-patch-${{ matrix.tag }}-${{ needs.release-data.outputs.kind }}
           path: ${{ runner.temp }}/out/*
@@ -232,7 +232,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with: { pattern: "sora-fan-patch-*-${{ needs.release-data.outputs.kind }}", path: dl }
       - name: Attach to the draft release
         env:
