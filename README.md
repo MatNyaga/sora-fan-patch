@@ -102,6 +102,11 @@ The downloads are not code-signed, so the system warns once:
 - **Linux:** make the AppImage executable (Properties → "Allow executing", or `chmod +x`). Some distributions
   need `libfuse2`.
 
+## Versions and where it runs
+
+What changed in each version: [CHANGELOG.md](CHANGELOG.md). The patched game is tested in PPSSPP (PC) and on PS Vita
+with Adrenaline (versions 1.0 and 1.1). A real PSP is not tested yet.
+
 ## Licence and credits
 
 Copyright © 2026 Mat. This program is free software under the **GNU General Public License v3.0 or later**
