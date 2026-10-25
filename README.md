@@ -39,7 +39,8 @@ app/ui/    the window: HTML/CSS/JS, all player-facing texts in strings.en.js
 app/src-tauri/  Tauri v2 shell; build.rs embeds the release chosen by SORAPATCH_RELEASE_DIR
 app/Dockerfile  Linux build box (Ubuntu 22.04 + WebKitGTK 4.1 dev packages)
 mock/      look review page (open mock/index.html in a browser)
-tests/     run_synthetic.sh (end-to-end checks), app_autotest.sh / app_release_gui.sh (real window, Xvfb)
+tests/     run_synthetic.sh + run_packs_synthetic.sh (end-to-end checks), app_autotest.sh / app_release_gui.sh
+           (real window, Xvfb)
 .github/workflows/build.yml   Windows / macOS / Linux builds
 ```
 
@@ -50,12 +51,21 @@ Needs Rust (1.80 or newer; CI uses 1.97.1). For the tests also `xdelta3` and `py
 ```sh
 cargo test --release            # core + cli unit tests
 tests/run_synthetic.sh          # synthetic end-to-end checks; also creates testdata/rel-default
+tests/run_packs_synthetic.sh    # the same for pack releases (fighter checklist)
 target/release/sorapatch-cli --check-strings
 ```
 
 Command-line use: `sorapatch-cli RELEASE_DIR YOUR_GAME.iso [--out-dir DIR]`.
 
-**Desktop app.** `SORAPATCH_RELEASE_DIR=<folder with release.json + patch.vcdiff>` chooses the embedded release;
+**Pack releases (fighter-pack checklist).** A release folder with `release.json` format 3 holds `packs/*.vcdiff`
+(one per pack: its own bytes, rebuilt in memory against your disc) and `sets/*.vcdiff` (one small patch per mix of
+fighters). The app shows a "Fighters to add" checklist (all ticked); the result file's SHA-256 and the fighter list
+inside it (roster id) are checked before it gets its name. Command line: `sorapatch-cli RELEASE_DIR YOUR_GAME.iso
+--packs sora` (default: all fighters), `sorapatch-cli RELEASE_DIR --list`. Tests: `tests/run_packs_synthetic.sh`.
+A release marked `local_test` is refused by the app build (`SORAPATCH_ALLOW_LOCAL_TEST=1` for local tests only).
+
+**Desktop app.** `SORAPATCH_RELEASE_DIR=<release folder>` (release.json + patch.vcdiff, or release.json + packs/ + sets/)
+chooses the embedded release;
 without it the synthetic test release from `tests/run_synthetic.sh` is embedded (a test build that cannot patch
 the game). Bundles need the Tauri CLI (`cargo install tauri-cli --version 2.12.3 --locked`):
 
@@ -76,8 +86,10 @@ exact commit). Builds are uploaded as workflow artifacts; nothing is published a
 
 - Pushes and pull requests build with the **synthetic test release** (artifacts named `…-synthetic-test`).
 - A real build: Actions → **build** → **Run workflow**, with `release_zip_url` = a link to a zip holding
-  `release.json` + `patch.vcdiff` (+ `README.txt`) at its top level, and `release_zip_sha256` = the zip's SHA-256.
-  The run refuses a wrong checksum or any other file in the zip.
+  `release.json` + `patch.vcdiff` (+ `README.txt`) at its top level, or for a pack release `release.json` +
+  `packs/*.vcdiff` + `sets/*.vcdiff` (+ `README.txt`), and `release_zip_sha256` = the zip's SHA-256.
+  The run refuses a wrong checksum, any other file in the zip, a pack without a `blob` (raw pack data) and a
+  release marked `local_test`.
 
 ## First start of an unsigned app
 

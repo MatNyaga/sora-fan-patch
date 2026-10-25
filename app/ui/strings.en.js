@@ -27,6 +27,18 @@ window.SORA_STRINGS = {
   "how_get_link": "How do I get this file?",
   "how_get_body": "Make it from your own game disc: on a PSP with custom firmware, set “USB Device” to “UMD Disc” in the VSH menu, connect the PSP to your computer with a USB cable, and copy the .iso file that appears.",
 
+  "packs_title": "Fighters to add",
+  "packs_note": "Each fighter uses one Friend Card space in your save.",
+  "packs_none": "Tick at least one fighter first.",
+  "packs_mix": "This mix of fighters isn't available. Please tick a different mix.",
+  "welcome_title_packs": "Add {names} to your game",
+  "welcome_title_none": "Add fighters to your game",
+  "welcome_body_packs": "This makes a new copy of your game with the fighters you tick. Your own game file stays exactly as it is.",
+  "step_build_packs": "Add fighters",
+  "building_title_packs": "Adding {names}…",
+  "done_title_one": "Done! {names} is ready.",
+  "done_title_many": "Done! {names} are ready.",
+
   "step_check": "Check your file",
   "step_build": "Add Sora",
   "step_verify": "Check the result",
@@ -94,5 +106,14 @@ window.SORA_STRINGS = {
   "err_build_failed_title": "Something went wrong",
   "err_build_failed_body": "The new file didn't come out right, so we removed it. Your original file is safe. Please try again. If it keeps happening, tell us this code: {code}.",
   "err_cancelled_title": "Stopped",
-  "err_cancelled_body": "Nothing was changed. You can start again any time."
+  "err_cancelled_body": "Nothing was changed. You can start again any time.",
+
+  "err_already_has_title": "This file already has {names}!",
+  "err_already_has_body": "It's already fan patch {version} with {names}. You can play it right away. For a different mix of fighters, choose your original game file.",
+  "err_older_has_title": "This file has an older fan patch ({version})",
+  "err_older_has_body": "Please choose your original game file, the one without any fighters added. We'll build the new version from it.",
+  "err_no_pack_title": "Pick at least one fighter",
+  "err_no_pack_body": "Tick the fighters you want to add, then choose your game file again.",
+  "err_pack_mix_title": "This mix of fighters isn't available",
+  "err_pack_mix_body": "This version has no file for exactly that mix ({names}). Please tick a different mix of fighters."
 };

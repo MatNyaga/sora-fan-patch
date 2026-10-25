@@ -1,6 +1,6 @@
 [package]
 name = "sora-fan-patch"
-version = "1.0.0"
+version = "1.1.0"
 edition = "2021"
 description = "Sora for Dissidia 012 - fan patch installer (applies our patch to the player's own disc image)"
 license = "GPL-3.0-or-later"

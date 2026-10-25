@@ -43,8 +43,15 @@
 <main id="main">
   <!-- 1. Welcome / choose file -->
   <section class="screen" data-screen="welcome">
-    <h1 tabindex="-1" data-t="welcome_title"></h1>
-    <p class="lead" data-t="welcome_body"></p>
+    <h1 tabindex="-1" id="welcome-title" data-t="welcome_title"></h1>
+    <p class="lead" id="welcome-body" data-t="welcome_body"></p>
+    <!-- Pack release (format 3): the fighter checklist. Hidden for a one-patch release. -->
+    <fieldset class="packs" id="packs" hidden>
+      <legend data-t="packs_title"></legend>
+      <div class="pack-list" id="pack-list"></div>
+      <p class="packs-note" data-t="packs_note"></p>
+      <p class="packs-warn" id="packs-warn" role="status" hidden></p>
+    </fieldset>
     <button class="drop" id="drop" aria-describedby="drop-hint">
       <svg class="drop-icon" viewBox="0 0 64 64" aria-hidden="true">
         <circle cx="32" cy="42" r="18" fill="none" stroke="currentColor" stroke-width="3"/>
@@ -67,7 +74,7 @@
   <section class="screen" data-screen="working">
     <ol class="steps" aria-label="Steps">
       <li data-step="checking"><span class="dot"></span><span data-t="step_check"></span></li>
-      <li data-step="building"><span class="dot"></span><span data-t="step_build"></span></li>
+      <li data-step="building"><span class="dot"></span><span id="step-build" data-t="step_build"></span></li>
       <li data-step="verifying"><span class="dot"></span><span data-t="step_verify"></span></li>
     </ol>
     <h1 tabindex="-1" id="work-title"></h1>
@@ -100,7 +107,7 @@
     <div class="badge ok" aria-hidden="true">
       <svg viewBox="0 0 48 48"><path d="M13 25 L21 33 L36 16" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg>
     </div>
-    <h1 tabindex="-1" data-t="done_title"></h1>
+    <h1 tabindex="-1" id="done-title" data-t="done_title"></h1>
     <div class="result">
       <span class="label" data-t="done_file_label"></span>
       <span class="file" id="done-file"></span>

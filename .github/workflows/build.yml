@@ -1,7 +1,8 @@
 # Builds the fan patch app for Windows, macOS (Apple Silicon + Intel) and Linux.
 # Repository root = the installer workspace (core/, cli/, app/, tests/).
 #
-#   test          Linux: cargo test (core + cli), the synthetic end-to-end suite, the strings check.
+#   test          Linux: cargo test (core + cli), the synthetic end-to-end suites (one-patch release and
+#                 pack release with the fighter checklist), the strings check.
 #                 Uploads the synthetic test release it made (3 MiB fake disc, no game data).
 #   release-data  Picks the release to embed: the zip given to a manual run (checked against its
 #                 SHA-256 and for unexpected files), or the synthetic test release when none is given.
@@ -9,7 +10,8 @@
 #                 each with LICENSE.txt + SOURCE.txt. Uploaded as workflow artifacts only: nothing is
 #                 published to a GitHub Release by this workflow.
 #
-# Release data (release.json + patch.vcdiff, our own content, never game files) is NOT in git.
+# Release data (our own content, never game files) is NOT in git: release.json + patch.vcdiff
+# (formats 1/2), or release.json + packs/*.vcdiff + sets/*.vcdiff (format 3, pack release).
 # Give it to a manual run (Actions -> build -> Run workflow) as a zip URL + the zip's SHA-256.
 # Or upload that zip to a DRAFT GitHub Release (asset name sora-release-*.zip) and give the run its
 # tag + SHA-256: the run then also attaches the finished apps to that draft. The draft stays hidden
@@ -22,7 +24,7 @@ on:
   workflow_dispatch:
     inputs:
       release_zip_url:
-        description: "URL of a zip with release.json + patch.vcdiff (+ README.txt) at its top level. Empty = synthetic test release."
+        description: "URL of a zip with release.json + patch.vcdiff, or release.json + packs/ + sets/ (+ README.txt) at its top level. Empty = synthetic test release."
         required: false
         default: ""
       release_tag:
@@ -61,6 +63,7 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y xdelta3
       - run: cargo test --release --locked
       - run: tests/run_synthetic.sh
+      - run: tests/run_packs_synthetic.sh
       - run: target/release/sorapatch-cli --check-strings
       - name: Synthetic test release
         uses: actions/upload-artifact@v7
@@ -106,30 +109,62 @@ jobs:
             fi
             echo "${SUM,,}  release.zip" | sha256sum -c -
             python3 -I - release.zip embed <<'PY'
-          import json, sys, zipfile
+          import json, re, sys, zipfile
           z = zipfile.ZipFile(sys.argv[1])
           names = [n for n in z.namelist() if not n.endswith("/")]
-          allowed = {"release.json", "patch.vcdiff", "README.txt"}
-          bad = [n for n in names if n not in allowed]
-          if bad or not {"release.json", "patch.vcdiff"} <= set(names):
-              sys.exit(f"release zip must hold only {sorted(allowed)} at its top level; got {names}")
-          z.extractall(sys.argv[2], ["release.json", "patch.vcdiff"])
-          m = json.load(open(f"{sys.argv[2]}/release.json"))
-          for k in ("format", "title", "version", "input", "output"):
+          if "release.json" not in names:
+              sys.exit(f"release zip has no release.json at its top level; got {names}")
+          m = json.loads(z.read("release.json"))
+          for k in ("format", "title", "version", "input"):
               if k not in m:
                   sys.exit(f"release.json: missing {k}")
-          print(f"release: {m['title']} {m['version']} (format {m['format']}) -> {m['output']['file_name']}")
+          if m["format"] in (1, 2):
+              # one-patch release (1.0): release.json + patch.vcdiff (+ README.txt)
+              allowed = {"release.json", "patch.vcdiff", "README.txt"}
+              bad = [n for n in names if n not in allowed]
+              if bad or "patch.vcdiff" not in names:
+                  sys.exit(f"release zip must hold only {sorted(allowed)} at its top level; got {names}")
+              if "output" not in m:
+                  sys.exit("release.json: missing output")
+              keep = ["release.json", "patch.vcdiff"]
+              print(f"release: {m['title']} {m['version']} (format {m['format']}) -> {m['output']['file_name']}")
+          elif m["format"] == 3:
+              # pack release (fighter checklist): release.json + packs/*.vcdiff + sets/*.vcdiff (+ README.txt)
+              if m.get("local_test") is True or any(p.get("test") for p in m.get("packs", [])):
+                  sys.exit("release.json is a LOCAL TEST release (test fighter): never build a shareable app from it")
+              ok = re.compile(r"^(packs|sets)/[A-Za-z0-9_.+-]+\.vcdiff$")
+              bad = [n for n in names if n not in ("release.json", "README.txt") and not ok.match(n)]
+              if bad:
+                  sys.exit(f"release zip may hold only release.json, README.txt, packs/*.vcdiff, sets/*.vcdiff; got {bad}")
+              for k in ("packs", "sets"):
+                  if not m.get(k):
+                      sys.exit(f"release.json: missing {k}")
+              # every pack must be a delta (blob = what it rebuilds in memory); raw pack data holds whole
+              # disc sectors (game bytes around ours) and is for the synthetic test only
+              raw = [p["id"] for p in m["packs"] if "blob" not in p]
+              if raw:
+                  sys.exit(f"release.json: packs {raw} have no blob (raw pack data is never shipped)")
+              want = [p["data"]["file"] for p in m["packs"]] + [s["patch"]["file"] for s in m["sets"]]
+              missing = [f for f in want if f not in names]
+              if missing:
+                  sys.exit(f"release zip lacks {missing}")
+              keep = ["release.json"] + want
+              print(f"release: {m['title']} {m['version']} (format 3, packs {[p['id'] for p in m['packs']]}) -> "
+                    + ", ".join(s["file_name"] for s in m["sets"]))
+          else:
+              sys.exit(f"release.json: unknown format {m['format']}")
+          z.extractall(sys.argv[2], keep)
           PY
             echo "kind=release-$(python3 -I -c 'import json,sys; print(json.load(open(sys.argv[1]))["version"])' embed/release.json)" >> "$GITHUB_OUTPUT"
           else
             cp synthetic/release.json synthetic/patch.vcdiff embed/
             echo "kind=synthetic-test" >> "$GITHUB_OUTPUT"
           fi
-          sha256sum embed/*
+          (cd embed && find . -type f | sort | xargs sha256sum)
       - uses: actions/upload-artifact@v7
         with:
           name: embed-release
-          path: embed/*
+          path: embed/
           if-no-files-found: error
           retention-days: 1
 
@@ -169,7 +204,7 @@ jobs:
         uses: actions/download-artifact@v8
         with: { name: embed-release, path: "${{ runner.temp }}/release" }
       - run: |
-          ls -la "$RUNNER_TEMP/release"
+          ls -laR "$RUNNER_TEMP/release"
           echo "SORAPATCH_RELEASE_DIR=$RUNNER_TEMP/release" >> "$GITHUB_ENV"
 
       - name: Tauri CLI (cached)

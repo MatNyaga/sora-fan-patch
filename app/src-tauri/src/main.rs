@@ -1,10 +1,13 @@
 // Sora for Dissidia 012 — fan patch installer (Tauri v2 shell around sorapatch-core).
-// The UI (../ui) calls: release_info, start(path, outDir?), cancel, reveal(path), autotest.
+// The UI (../ui) calls: release_info, start(path, outDir?, packs?), cancel, reveal(path), autotest.
+// A pack release (format 3, P2.11) lists its fighter packs in release_info; `packs` = the ticked ids.
 // Work runs on a background thread and reports through the "progress" and "outcome" events.
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use serde::Serialize;
-use sorapatch_core::{build, check_input, plan_output, Problem, Progress, Release, Stage};
+use sorapatch_core::{build_for, check_input, plan_output_for, Problem, Progress, Release, Stage};
+use std::borrow::Cow;
+use std::collections::BTreeMap;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -56,12 +59,26 @@ impl Progress for Emit {
 
 #[tauri::command]
 fn release_info(state: State<AppState>) -> serde_json::Value {
-    let m = &state.rel.manifest;
-    serde_json::json!({ "title": m.title, "version": m.version, "output_name": m.output.file_name })
+    let rel = &state.rel;
+    let m = &rel.manifest;
+    let packs: Vec<_> = rel
+        .fighter_packs()
+        .iter()
+        .map(|p| serde_json::json!({ "id": p.id, "name": p.name, "blurb": p.blurb }))
+        .collect();
+    let sets: Vec<_> = m.sets.iter().map(|s| serde_json::json!({ "packs": s.packs, "file_name": s.file_name })).collect();
+    let output_name = m.output.as_ref().map(|o| o.file_name.clone());
+    serde_json::json!({ "title": m.title, "version": m.version, "output_name": output_name, "packs": packs, "sets": sets })
 }
 
 #[tauri::command]
-fn start(app: AppHandle, state: State<AppState>, path: String, out_dir: Option<String>) -> Result<(), String> {
+fn start(
+    app: AppHandle,
+    state: State<AppState>,
+    path: String,
+    out_dir: Option<String>,
+    packs: Option<Vec<String>>,
+) -> Result<(), String> {
     if state.busy.swap(true, Ordering::SeqCst) {
         return Err("busy".into());
     }
@@ -71,9 +88,11 @@ fn start(app: AppHandle, state: State<AppState>, path: String, out_dir: Option<S
         let input = PathBuf::from(&path);
         let out_dir = out_dir.map(PathBuf::from);
         let mut prog = Emit { app: app.clone(), cancel, last: (None, u64::MAX) };
-        let result = check_input(&rel, &input, &mut prog)
-            .and_then(|_| plan_output(&rel, &input, out_dir.as_deref()))
-            .and_then(|out| build(&rel, &input, &out, &mut prog));
+        let result = rel.target(packs.as_deref()).and_then(|target| {
+            check_input(&rel, &input, &mut prog)
+                .and_then(|_| plan_output_for(&target, &input, out_dir.as_deref()))
+                .and_then(|out| build_for(&rel, &target, &input, &out, &mut prog))
+        });
         let outcome = match result {
             Ok(out) => Outcome::Done {
                 path: out.display().to_string(),
@@ -104,11 +123,14 @@ fn reveal(path: String) -> Result<(), String> {
 #[tauri::command]
 fn autotest() -> Option<serde_json::Value> {
     let input = std::env::var("SORAPATCH_AUTOTEST").ok()?;
-    Some(serde_json::json!({ "input": input, "out_dir": std::env::var("SORAPATCH_AUTOTEST_OUT").ok() }))
+    let packs = std::env::var("SORAPATCH_AUTOTEST_PACKS").ok().map(|v| v.split(',').map(String::from).collect::<Vec<_>>());
+    Some(serde_json::json!({ "input": input, "out_dir": std::env::var("SORAPATCH_AUTOTEST_OUT").ok(), "packs": packs }))
 }
 
 fn main() {
-    let rel = Release::from_parts(release::MANIFEST, release::DELTA).expect("embedded release is invalid");
+    let files: BTreeMap<String, Cow<'static, [u8]>> =
+        release::FILES.iter().map(|(k, v)| (k.to_string(), Cow::Borrowed(*v))).collect();
+    let rel = Release::from_files(release::MANIFEST, files).expect("embedded release is invalid");
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())

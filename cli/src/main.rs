@@ -1,5 +1,8 @@
 //! Test/CI harness: runs exactly what the app runs and prints the same plain-word texts.
-//!   sorapatch-cli RELEASE_DIR INPUT_FILE [--out-dir DIR]
+//!   sorapatch-cli RELEASE_DIR INPUT_FILE [--out-dir DIR] [--packs ID[,ID...]]
+//!       --packs (format-3 pack release only): the ticked fighters, like the app's checklist;
+//!       default = all fighters of the release (what the app ticks at the start).
+//!   sorapatch-cli RELEASE_DIR --list     (fighter packs and the mixes this release can build)
 //!   sorapatch-cli --check-strings
 //!   sorapatch-cli --virtual-source CLEAN_ISO OUT_FILE   (release tooling, tools/pkg/make_release.py)
 //!       writes CLEAN_ISO with its EBOOT.BIN replaced by the decryption the app makes (the format-2
@@ -7,8 +10,8 @@
 //! Exit 0 = new file built, 1 = a problem (message printed), 2 = usage / release error.
 
 use sorapatch_core::{
-    build, check_input, decrypt_disc_file, plan_output, Problem, Progress, Release, SourceInfo, Stage, VirtualSource,
-    EBOOT_PATH, SOURCE_PLAIN_EBOOT,
+    build_for, check_input, decrypt_disc_file, join_names, plan_output_for, Problem, Progress, Release, SourceInfo, Stage,
+    VirtualSource, EBOOT_PATH, SOURCE_PLAIN_EBOOT,
 };
 use std::fs::{self, File, OpenOptions};
 use std::io::{BufWriter, Write};
@@ -53,6 +56,8 @@ const CODES: &[&str] = &[
     "not_found", "is_folder", "cant_read", "empty", "archive", "compressed_image", "eboot",
     "not_disc", "other_game", "wrong_region", "incomplete", "already_patched", "older_patch",
     "modified", "no_space", "no_space_late", "cant_write", "build_failed", "cancelled",
+    // format 3 (pack release, P2.11)
+    "already_has", "older_has", "no_pack", "pack_mix",
 ];
 
 fn strings() -> serde_json::Value {
@@ -116,22 +121,54 @@ fn main() {
         return;
     }
     if args.len() < 2 {
-        eprintln!("usage: sorapatch-cli RELEASE_DIR INPUT_FILE [--out-dir DIR] | --check-strings | --virtual-source CLEAN OUT");
+        eprintln!("usage: sorapatch-cli RELEASE_DIR INPUT_FILE [--out-dir DIR] [--packs ID,...] | RELEASE_DIR --list | --check-strings | --virtual-source CLEAN OUT");
         std::process::exit(2);
     }
     let rel = Release::load_dir(&PathBuf::from(&args[0])).unwrap_or_else(|e| {
         eprintln!("release: {e}");
         std::process::exit(2)
     });
+    if args[1] == "--list" {
+        let m = &rel.manifest;
+        println!("release {} {} (format {}{})", m.title, m.version, m.format, if m.local_test { ", LOCAL TEST" } else { "" });
+        for p in &m.packs {
+            let kind = if p.always { "always" } else if p.test { "test" } else { "fighter" };
+            println!("pack {} {} [{kind}] {} - {} ({} B)", p.id, p.version, p.name, p.blurb, p.data.size);
+        }
+        for st in &m.sets {
+            println!("set {} -> {} ({} B, sha256 {}, roster {})", st.packs.join("+"), st.file_name, st.size, st.sha256, st.roster_id);
+        }
+        return;
+    }
     let input = PathBuf::from(&args[1]);
-    let out_dir = args.iter().position(|a| a == "--out-dir").and_then(|i| args.get(i + 1)).map(PathBuf::from);
+    let opt = |k: &str| args.iter().position(|a| a == k).and_then(|i| args.get(i + 1));
+    let out_dir = opt("--out-dir").map(PathBuf::from);
+    let packs: Option<Vec<String>> =
+        opt("--packs").map(|v| v.split(',').filter(|x| !x.is_empty()).map(String::from).collect());
+    if packs.is_some() && rel.manifest.format < 3 {
+        eprintln!("--packs: this release has no fighter packs (format {})", rel.manifest.format);
+        std::process::exit(2);
+    }
     let mut bar = Bar { last: (None, 101) };
-    let result = check_input(&rel, &input, &mut bar)
-        .and_then(|_| plan_output(&rel, &input, out_dir.as_deref()))
-        .and_then(|out| build(&rel, &input, &out, &mut bar));
+    let mut done = s["done_title"].as_str().unwrap_or("").to_string();
+    let result = rel.target(packs.as_deref()).and_then(|target| {
+        if let Some(set) = &target.set {
+            // same words as the app: "Done! Sora is ready." / "Done! Sora and X are ready."
+            let names: Vec<String> = set
+                .packs
+                .iter()
+                .map(|i| rel.manifest.packs.iter().find(|p| &p.id == i).map(|p| p.name.clone()).unwrap_or_default())
+                .collect();
+            let key = if names.len() > 1 { "done_title_many" } else { "done_title_one" };
+            done = s[key].as_str().unwrap_or("").replace("{names}", &join_names(&names));
+        }
+        check_input(&rel, &input, &mut bar)
+            .and_then(|_| plan_output_for(&target, &input, out_dir.as_deref()))
+            .and_then(|out| build_for(&rel, &target, &input, &out, &mut bar))
+    });
     match result {
         Ok(out) => {
-            println!("OK {}", s["done_title"].as_str().unwrap_or(""));
+            println!("OK {done}");
             println!("output {}", out.display());
         }
         Err(p) => {
