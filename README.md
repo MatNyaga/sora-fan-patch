@@ -105,7 +105,7 @@ The downloads are not code-signed, so the system warns once:
 ## Versions and where it runs
 
 What changed in each version: [CHANGELOG.md](CHANGELOG.md). The patched game is tested in PPSSPP (PC) and on PS Vita
-with Adrenaline (versions 1.0 and 1.1). A real PSP is not tested yet.
+with Adrenaline (versions 1.0 and 1.1; 1.2 has not been tried on a Vita yet). A real PSP is not tested yet.
 
 ## Licence and credits
 

@@ -5,6 +5,14 @@ Fan-made, not affiliated with Square Enix or Disney.
 
 Built by Mat with help from AI tools (Claude, Codex).
 
+## 1.2.0 (2026-10-29)
+- New character-select picture of Sora, hand-edited by Mat. His small menu and battle faces now match it, with cleaner, smoother outlines.
+- Fixed: in the Labyrinth, Sora's party slot now shows his own face instead of the start of another fighter's name.
+- The fighter engine under Sora was updated, so more menus work correctly with added fighters.
+- Your 1.1 save keeps working.
+- Tested in PPSSPP. The PS Vita check was done with 1.1; 1.2 has not been tried on a Vita yet.
+- Known issue: Thundaga can show small orange squares at the bolt hit for a moment. It only affects the look; a fix is planned.
+
 ## 1.1.0 (2026-10-25)
 - The app has a "Fighters to add" list. Today it has one fighter, Sora, ticked from the start.
 - Sora runs on a new fighter engine underneath, made so more fighters can be added later.
